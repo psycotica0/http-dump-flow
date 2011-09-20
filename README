@@ -1,0 +1,17 @@
+This program is meant to read a set of files like those produced by tcpflow and interpret it as an HTTP dialog.
+
+http-persistent-read "request-file" "response-file": This reads from one file, containing requests, and another file containing corresponding responses.
+	It then drops into the current directory a series of files that correspond to the contents of the response body and other data.
+	So, if the request looks like "GET /body.html HTTP/1.1" with "Host: something.com", it will take the corresponding response, and strip off the headers and save it as "./something.com/body.html.0".
+	It will also save "./something.com/body.html.request.0", which is the raw request, and "./something.com/body.html.headers.0" which is the response headers stripped off "body.html.0".
+
+	The purpose of the .0 is that this will be an incrementing counter to distinguish different requests of the same URI.
+	So, if body.html were requested again, it'd be saved at "something.com/body.html.1".
+	Also, any characters in the URI after and including the '?' character are discarded from the resultant filename.
+	This makes it way cleaner looking and avoids any issues like that.
+	If you want to know what query parameters lead to a given result, that data can be found in the result.request.N file.
+
+	It's assumed that the files will contain a series of requests or responses in the HTTP1.1 format.
+
+	It should handle chunked data properly.
+	It should unzip compressed data.
