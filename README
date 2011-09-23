@@ -13,5 +13,5 @@ http-persistent-read "request-file" "response-file": This reads from one file, c
 
 	It's assumed that the files will contain a series of requests or responses in the HTTP1.1 format.
 
-	It should handle chunked data properly.
-	It should unzip compressed data.
+	It handles files that specify Content-Length or Transfer-Encoding: chunked.
+	It should unzip compressed data but currently doesn't.
