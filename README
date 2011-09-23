@@ -1,6 +1,6 @@
 This program is meant to read a set of files like those produced by tcpflow and interpret it as an HTTP dialog.
 
-http-persistent-read "request-file" "response-file": This reads from one file, containing requests, and another file containing corresponding responses.
+http-persistent-read.ruby "request-file" "response-file": This reads from one file, containing requests, and another file containing corresponding responses.
 	It then drops into the current directory a series of files that correspond to the contents of the response body and other data.
 	So, if the request looks like "GET /body.html HTTP/1.1" with "Host: something.com", it will take the corresponding response, and strip off the headers and save it as "./something.com/body.html.0".
 	It will also save "./something.com/body.html.request.0", which is the raw request, and "./something.com/body.html.headers.0" which is the response headers stripped off "body.html.0".
@@ -15,3 +15,15 @@ http-persistent-read "request-file" "response-file": This reads from one file, c
 
 	It handles files that specify Content-Length or Transfer-Encoding: chunked.
 	It should unzip compressed data but currently doesn't.
+
+read-flows.sh: This is helper script around http-persistent-read.ruby.
+	It expects to be located in the same directory as http-persistent-read.ruby.
+	Basically, you give it a list of request files and it calls http-persistent-read.ruby for each request and corresponding response file.
+	Which it works out from the filename. Assuming they're of the format tcpflow expects. Which it does.
+	The real help is that it allows you (me) to do ../read-flows.sh 192*
+	This then takes all flows in the current directory from my IP and assumes they're the requests.
+	It then works out the responses automatically from there.
+	Sweet.
+	Oh, also, it populates the current dir, but you could do:
+		../../read-flows.sh ../192*
+	That works two and then you don't have your flows and your expansion interacting.
