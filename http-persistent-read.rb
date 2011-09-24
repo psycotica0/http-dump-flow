@@ -1,61 +1,63 @@
 #!/usr/bin/ruby
 
+require 'fileutils'
+
 if ARGV.size != 2
 	raise "Must give two arguments. Filename of request file and response file."
 end
 
 class String
 	def dump_to_file(filename)
-		pwd = Dir.pwd
-		dirs = File.dirname(filename).split('/')
-		dirs.each do |dir|
-			if !(File.directory?(dir))
-				Dir.mkdir(dir)
-			end
-			Dir.chdir(dir)
-		end
-		Dir.chdir(pwd)
-		File.open(filename, "w") do |dump_file|
+		FileUtils.mkdir_p File.dirname(filename)
+		open(filename, "w") do |dump_file|
 			dump_file.write(self)
 		end
+	end
+end
+
+# This does a setup, a body if the condition is true, then a breakdown every iteration until after the first where the condition is true
+def three_part_loop(setup, breakdown, condition, body)
+	done = false
+	until done
+		setup.call
+		done = condition.call
+		body.call unless done
+		breakdown.call
 	end
 end
 
 request_stream = File.open(ARGV[0])
 response_stream = File.open(ARGV[1])
 
-requests = request_stream.read.split("\r\n\r\n")
+requests = request_stream.read.split("\r\n\r\n").each do |request|
+	host = request[/Host:(.*)\r\n/i,1].strip
+	path = request.split("\r\n")[0][/\/[a-zA-Z0-9.%_\/!~*'()+-]*/]
 
-requests.each do |request|
-	host = request[/Host:(.*)\r\n/,1].strip
-	path = request.split("\r\n")[0][/\/[a-zA-Z0-9.%_\/-]*/]
+	index = Dir.glob(host+path+".request.*").map do |i|
+		i.reverse[/[0-9]*/].reverse.to_i
+	end.max
 
-	index=0
-	while File.exists?(host+path+".request."+index.to_s)
-		index = index.succ
+	if index == nil
+		index = 0
+	else
+		index += 1
 	end
+
 	request.dump_to_file(host+path+".request."+index.to_s)
 
 	response_headers = response_stream.readline("\r\n\r\n")
-	response_size = response_headers[/Content-Length: *([0-9]*)/,1]
+	response_size = response_headers[/Content-Length: *([0-9]*)/i,1]
 	response_body = ""
-	if response_size != nil
+	unless response_size.nil?
 		response_body = response_stream.read(response_size.to_i)
 	else
-		if response_headers.match(/Transfer-Encoding: *chunked/) == nil
+		if response_headers.match(/Transfer-Encoding: *chunked/i).nil?
 			raise "Neither content length nor chunked"
 		end
-		while true
-			size = response_stream.readline("\r\n").to_i(16)
-			if size == 0
-				break
-			end
-			response_body = response_body + response_stream.read(size)
-			# Consume newline
-			response_stream.read(2)
-		end
-		# Consume last newline
-		response_stream.read(2)
+		size = 0
+		# Read every chunk until one is 0, consuming a newline after every chunk including last empty one
+		three_part_loop(lambda {size = response_stream.readline("\r\n").to_i(16)}, lambda {response_stream.read(2)},
+		                lambda {size == 0}, lambda {response_body += response_stream.read(size)})
 	end
 	response_headers.dump_to_file(host+path+".headers."+index.to_s)
 	response_body.dump_to_file(host+path+"."+index.to_s)
