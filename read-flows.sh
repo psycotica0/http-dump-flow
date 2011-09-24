@@ -9,6 +9,6 @@ while [ -n "$1" ]; do
 	request_file="$(basename "$1")"
 	response_file="$(echo "$request_file" | cut -d '-' -f2)-$(echo "$request_file" | cut -d '-' -f1)"
 	# This dirname thing is a total hack...
-	"$(dirname "$0")"/http-persistent-read.ruby "$data_dir/$request_file" "$data_dir/$response_file"
+	"$(dirname "$0")"/http-persistent-read.rb "$data_dir/$request_file" "$data_dir/$response_file"
 	shift
 done
