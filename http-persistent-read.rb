@@ -29,9 +29,13 @@ end
 request_stream = File.open(ARGV[0])
 response_stream = File.open(ARGV[1])
 
-requests = request_stream.read.split("\r\n\r\n").each do |request|
+until request_stream.eof? do
+	request = request_stream.readline("\r\n\r\n")
 	host = request[/Host:(.*)\r\n/i,1].strip
 	path = request.split("\r\n")[0][/\/[a-zA-Z0-9.%_\/!~*'()+-]*/]
+
+	request_size = request[/Content-Length: *([0-9]*)/i,1]
+	request += request_stream.read(request_size.to_i) unless request_size.nil?
 
 	index = Dir.glob(host+path+".request.*").map do |i|
 		i.reverse[/[0-9]*/].reverse.to_i
