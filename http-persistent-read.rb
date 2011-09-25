@@ -1,6 +1,8 @@
 #!/usr/bin/ruby
 
 require 'fileutils'
+require 'zlib'
+require 'stringio'
 
 if ARGV.size != 2
 	raise "Must give two arguments. Filename of request file and response file."
@@ -12,6 +14,17 @@ class String
 		open(filename, "w") do |dump_file|
 			dump_file.write(self)
 		end
+	end
+	def unzip
+		begin
+			reader = Zlib::GzipReader.new(StringIO.new(self))
+			value = reader.read
+			reader.close
+		rescue
+			STDERR.puts "Failed to unzip string."
+			value = self
+		end
+		value
 	end
 end
 
@@ -61,6 +74,7 @@ until request_stream.eof? do
 		                lambda {size == 0}, lambda {response_body += response_stream.read(size)})
 	end
 	response_headers.dump_to_file(host+path+".headers."+index.to_s)
+	response_body = response_body.unzip unless (response_body=='' || response_headers[/Content-Encoding: *gzip/i].nil?)
 	response_body.dump_to_file(host+path+"."+index.to_s) unless response_body==""
 end
 
