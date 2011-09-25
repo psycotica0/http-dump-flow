@@ -52,19 +52,16 @@ until request_stream.eof? do
 	response_headers = response_stream.readline("\r\n\r\n")
 	response_size = response_headers[/Content-Length: *([0-9]*)/i,1]
 	response_body = ""
-	unless response_size.nil?
+	if !(response_size.nil?)
 		response_body = response_stream.read(response_size.to_i)
-	else
-		if response_headers.match(/Transfer-Encoding: *chunked/i).nil?
-			raise "Neither content length nor chunked"
-		end
+	elsif !(response_headers.match(/Transfer-Encoding: *chunked/i).nil?)
 		size = 0
 		# Read every chunk until one is 0, consuming a newline after every chunk including last empty one
 		three_part_loop(lambda {size = response_stream.readline("\r\n").to_i(16)}, lambda {response_stream.read(2)},
 		                lambda {size == 0}, lambda {response_body += response_stream.read(size)})
 	end
 	response_headers.dump_to_file(host+path+".headers."+index.to_s)
-	response_body.dump_to_file(host+path+"."+index.to_s)
+	response_body.dump_to_file(host+path+"."+index.to_s) unless response_body==""
 end
 
 request_stream.close
